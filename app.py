@@ -5,105 +5,170 @@ import os
 from geopy.geocoders import Nominatim
 from streamlit_js_eval import get_geolocation
 
-# Page Configuration
-st.set_page_config(page_title="Field Service Portal", layout="centered")
+# Premium App Configurations
+st.set_page_config(page_title="Field Force Terminal", layout="centered", initial_sidebar_state="collapsed")
 
 DATA_FILE = "service_records.csv"
-PASSWORD = "Sanjay@Admin2026"
+ADMIN_PASSWORD = "Sanjay@Admin2026"
 
+# Database initialization
 if not os.path.exists(DATA_FILE):
-    df = pd.DataFrame(columns=["Timestamp", "Employee Name", "Text Address", "Google Maps Link"])
+    df = pd.DataFrame(columns=["Timestamp", "Employee Name", "Maps Routing", "Verified Address"])
     df.to_csv(DATA_FILE, index=False)
 
 def get_text_address(lat, lon):
     try:
-        geolocator = Nominatim(user_agent="field_service_enterprise_portal")
-        location = geolocator.reverse(f"{lat}, {lon}", timeout=10)
-        return location.address if location else "Address not found"
+        geolocator = Nominatim(user_agent="field_force_enterprise_system")
+        location = geolocator.reverse(f"{lat}, {lon}", timeout=8)
+        return location.address if location else "Location Coordinates Recorded"
     except:
-        return "Network Error"
+        return "Coordinates Saved (Reverse Geo Timeout)"
 
 query_params = st.query_params
-url_name = query_params.get("name", "").replace("_", " ")
+employee_name = query_params.get("name", "").replace("_", " ")
 
-st.title("💼 Field Attendance System")
+# --- EXECUTIVE UI DESIGN ---
+st.markdown("""
+    <style>
+    /* Global Styles */
+    .main .block-container { padding-top: 2rem; max-width: 550px; }
+    h1 { color: #1E3A8A; font-family: 'Inter', sans-serif; font-weight: 800; text-align: center; font-size: 28px; margin-bottom: 5px; }
+    .sub-date { text-align: center; color: #6B7280; font-size: 14px; margin-bottom: 25px; font-weight: 500; }
+    
+    /* Premium 3D Button Styling */
+    div.stButton > button:first-child {
+        background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+        color: white !important;
+        font-size: 18px !important;
+        font-weight: 700 !important;
+        padding: 16px 20px !important;
+        border-radius: 12px !important;
+        border: none !important;
+        width: 100% !important;
+        box-shadow: 0px 5px 0px #047857, 0px 8px 15px rgba(0, 0, 0, 0.2);
+        transition: all 0.1s ease-in-out;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    div.stButton > button:first-child:active {
+        transform: translateY(4px) !important;
+        box-shadow: 0px 1px 0px #047857, 0px 4px 6px rgba(0, 0, 0, 0.1) !important;
+    }
+    
+    /* Admin Login Button Styling */
+    .admin-btn div.stButton > button:first-child {
+        background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%) !important;
+        box-shadow: 0px 5px 0px #1D4ED8, 0px 8px 15px rgba(0, 0, 0, 0.15) !important;
+        font-size: 16px !important;
+        padding: 12px 20px !important;
+    }
+    .admin-btn div.stButton > button:first-child:active {
+        box-shadow: 0px 1px 0px #1D4ED8, 0px 4px 6px rgba(0, 0, 0, 0.1) !important;
+    }
+    
+    /* Cards UI */
+    .user-card { background: #F3F4F6; padding: 20px; border-radius: 14px; border-left: 5px solid #3B82F6; margin-bottom: 20px; }
+    .success-card { background: #ECFDF5; padding: 20px; border-radius: 14px; border: 1px solid #A7F3D0; text-align: center; color: #065F46; font-weight: 600; font-size: 16px; box-shadow: 0px 4px 10px rgba(0,0,0,0.05); }
+    </style>
+""", unsafe_allow_html=True)
 
-tab1, tab2 = st.tabs(["🔒 Daily Check-In", "⚙️ Admin Panel"])
+st.markdown("<h1>💼 FIELD FORCE TERMINAL</h1>", unsafe_allow_html=True)
+st.markdown(f"<div class='sub-date'>Operational Date: {datetime.now().strftime('%d — %B — %Y')}</div>", unsafe_allow_html=True)
 
-# ================= EMPLOYEE PANEL =================
+tab1, tab2 = st.tabs(["📲 Mobile Terminal", "📊 Executive Analytics"])
+
+# ================= TAB 1: EXECUTIVE EMPLOYEE TERMINAL =================
 with tab1:
-    if not url_name:
-        st.error("⚠️ Invalid Link!")
+    if not employee_name:
+        st.error("❌ System Access Denied: Invalid Security Token Link.")
     else:
-        st.markdown(f"### Namaste, **{url_name}**")
-        st.write("Aaj ki duty chalu karne ke liye niche diye gaye green button ko dabayein.")
+        st.markdown(f"""
+        <div class='user-card'>
+            <span style='color:#4B5563; font-size:12px; font-weight:600; text-transform:uppercase;'>Authorized Executive</span>
+            <div style='color:#111827; font-size:22px; font-weight:700;'>{employee_name}</div>
+        </div>
+        """, unsafe_allow_html=True)
         
         if "verified_user" not in st.session_state:
             st.session_state.verified_user = False
 
-        # CSS for Big Smooth Green Button
-        st.markdown("""
-            <style>
-            div.stButton > button:first-child {
-                background-color: #4CAF50;
-                color: white;
-                font-size: 22px;
-                font-weight: bold;
-                padding: 18px 30px;
-                border-radius: 12px;
-                border: none;
-                width: 100%;
-                box-shadow: 0px 4px 12px rgba(0,0,0,0.15);
-                transition: 0.3s;
-            }
-            div.stButton > button:first-child:hover {
-                background-color: #45a049;
-                color: white;
-            }
-            </style>
-        """, unsafe_allow_html=True)
+        if not st.session_state.verified_user:
+            # 3D Trigger Button
+            trigger_checkin = st.button("PROCEED ENTERPRISE CHECK-IN ✔️")
 
-        # Aapke mutabik bilkul simple button text
-        trigger_gps = st.button("Ha me field par hu, Kaam chalu 👍")
-
-        if trigger_gps and not st.session_state.verified_user:
-            with st.spinner("🔄 Processing Check-In... (Kripya screen par ALLOW/OK par click karein)"):
-                loc = get_geolocation()
-                
-                if loc and 'coords' in loc:
-                    try:
-                        lat = loc['coords']['latitude']
-                        lon = loc['coords']['longitude']
-                        
-                        readable_address = get_text_address(lat, lon)
-                        maps_link = f"https://www.google.com/maps?q={lat},{lon}"
-                        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        
-                        new_data = pd.DataFrame([[timestamp, url_name, readable_address, maps_link]], 
-                                                columns=["Timestamp", "Employee Name", "Text Address", "Google Maps Link"])
-                        new_data.to_csv(DATA_FILE, mode='a', header=False, index=False)
-                        
-                        st.session_state.verified_user = True
-                        st.rerun()
-                    except Exception as e:
-                        st.error("⚠️ Server Busy. Please click button again.")
-                else:
-                    st.info("🔄 Attendance process karne ke liye, screen par aane wale option ko 'Allow' karke button dubaara dabayein.")
+            if trigger_checkin:
+                with st.spinner("Establishing secure satellite uplink..."):
+                    loc = get_geolocation()
+                    
+                    if loc and 'coords' in loc:
+                        try:
+                            lat = loc['coords']['latitude']
+                            lon = loc['coords']['longitude']
+                            
+                            readable_address = get_text_address(lat, lon)
+                            maps_link = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+                            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            
+                            # Arranged columns natively to prioritize Routing over Text Address
+                            new_data = pd.DataFrame([[timestamp, employee_name, maps_link, readable_address]], 
+                                                    columns=["Timestamp", "Employee Name", "Maps Routing", "Verified Address"])
+                            new_data.to_csv(DATA_FILE, mode='a', header=False, index=False)
+                            
+                            st.session_state.verified_user = True
+                            st.rerun()
+                        except Exception as e:
+                            st.error("Uplink Interrupted. Re-try execution.")
+                    else:
+                        st.info("ℹ️ Action Needed: Please click 'ALLOW' on your browser prompt to sync network authentication, then press the check-in button again.")
 
         if st.session_state.verified_user:
-            st.success(f"🎉 Thank you! Aapki aaj ki attendance lag gayi hai.")
+            st.markdown(f"""
+            <div class='success-card'>
+                🎉 Check-In Status: Verified!<br>
+                <span style='font-size:13px; font-weight:400; color:#047857;'>Your tactical duty logs have been submitted to enterprise registry.</span>
+            </div>
+            """, unsafe_allow_html=True)
             st.balloons()
 
-# ================= ADMIN PANEL =================
+# ================= TAB 2: MANAGEMENT CONTROL DASHBOARD =================
 with tab2:
-    st.subheader("🔒 Secure Service Monitoring")
-    admin_pass = st.text_input("Enter Password", type="password")
+    st.subheader("🔐 Management Authentication")
     
-    if admin_pass == PASSWORD:
-        st.success("Access Granted!")
+    # Session state initialization for secure login toggle
+    if "admin_logged_in" not in st.session_state:
+        st.session_state.admin_logged_in = False
+        
+    admin_pass = st.text_input("Enter Control Password", type="password")
+    
+    st.markdown("<div class='admin-btn'>", unsafe_allow_html=True)
+    login_click = st.button("AUTHENTICATE CONTROL PANEL 🔑")
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    if login_click:
+        if admin_pass == ADMIN_PASSWORD:
+            st.session_state.admin_logged_in = True
+        else:
+            st.session_state.admin_logged_in = False
+            st.error("❌ Authentication Failed: Invalid Control Credentials.")
+            
+    if st.session_state.admin_logged_in:
+        st.success("Authorized Session Verified!")
+        
         df_records = pd.read_csv(DATA_FILE)
+        
+        st.markdown("### 📊 Operational Live Sync Data")
         st.dataframe(
             df_records.iloc[::-1], 
             use_container_width=True,
-            column_config={"Google Maps Link": st.column_config.LinkColumn("Google Maps Link", display_text="Open Map 🗺️")}
+            column_config={
+                "Maps Routing": st.column_config.LinkColumn("Maps Routing", display_text="Open Live Map 🗺️")
+            }
+        )
+        
+        csv = df_records.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Export Enterprise CSV Log",
+            data=csv,
+            file_name=f"Enterprise_Report_{datetime.now().strftime('%Y-%m-%d')}.csv",
+            mime='text/csv',
         )
