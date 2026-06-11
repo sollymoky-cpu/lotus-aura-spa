@@ -5,13 +5,12 @@ import os
 from geopy.geocoders import Nominatim
 from streamlit_js_eval import get_geolocation
 
-# Premium App Configurations
+# Executive Interface Config
 st.set_page_config(page_title="Field Force Terminal", layout="centered", initial_sidebar_state="collapsed")
 
 DATA_FILE = "service_records.csv"
 ADMIN_PASSWORD = "Sanjay@Admin2026"
 
-# Database initialization
 if not os.path.exists(DATA_FILE):
     df = pd.DataFrame(columns=["Timestamp", "Employee Name", "Maps Routing", "Verified Address"])
     df.to_csv(DATA_FILE, index=False)
@@ -20,22 +19,19 @@ def get_text_address(lat, lon):
     try:
         geolocator = Nominatim(user_agent="field_force_enterprise_system")
         location = geolocator.reverse(f"{lat}, {lon}", timeout=8)
-        return location.address if location else "Location Coordinates Recorded"
+        return location.address if location else "Coordinates Successfully Logged"
     except:
-        return "Coordinates Saved (Reverse Geo Timeout)"
+        return "Coordinates Saved"
 
 query_params = st.query_params
 employee_name = query_params.get("name", "").replace("_", " ")
 
-# --- EXECUTIVE UI DESIGN ---
 st.markdown("""
     <style>
-    /* Global Styles */
     .main .block-container { padding-top: 2rem; max-width: 550px; }
     h1 { color: #1E3A8A; font-family: 'Inter', sans-serif; font-weight: 800; text-align: center; font-size: 28px; margin-bottom: 5px; }
     .sub-date { text-align: center; color: #6B7280; font-size: 14px; margin-bottom: 25px; font-weight: 500; }
     
-    /* Premium 3D Button Styling */
     div.stButton > button:first-child {
         background: linear-gradient(135deg, #10B981 0%, #059669 100%);
         color: white !important;
@@ -55,18 +51,13 @@ st.markdown("""
         box-shadow: 0px 1px 0px #047857, 0px 4px 6px rgba(0, 0, 0, 0.1) !important;
     }
     
-    /* Admin Login Button Styling */
     .admin-btn div.stButton > button:first-child {
         background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%) !important;
         box-shadow: 0px 5px 0px #1D4ED8, 0px 8px 15px rgba(0, 0, 0, 0.15) !important;
         font-size: 16px !important;
         padding: 12px 20px !important;
     }
-    .admin-btn div.stButton > button:first-child:active {
-        box-shadow: 0px 1px 0px #1D4ED8, 0px 4px 6px rgba(0, 0, 0, 0.1) !important;
-    }
     
-    /* Cards UI */
     .user-card { background: #F3F4F6; padding: 20px; border-radius: 14px; border-left: 5px solid #3B82F6; margin-bottom: 20px; }
     .success-card { background: #ECFDF5; padding: 20px; border-radius: 14px; border: 1px solid #A7F3D0; text-align: center; color: #065F46; font-weight: 600; font-size: 16px; box-shadow: 0px 4px 10px rgba(0,0,0,0.05); }
     </style>
@@ -77,10 +68,10 @@ st.markdown(f"<div class='sub-date'>Operational Date: {datetime.now().strftime('
 
 tab1, tab2 = st.tabs(["📲 Mobile Terminal", "📊 Executive Analytics"])
 
-# ================= TAB 1: EXECUTIVE EMPLOYEE TERMINAL =================
+# ================= EMPLOYEE TERMINAL =================
 with tab1:
     if not employee_name:
-        st.error("❌ System Access Denied: Invalid Security Token Link.")
+        st.error("❌ System Access Denied: Invalid Security Token.")
     else:
         st.markdown(f"""
         <div class='user-card'>
@@ -93,33 +84,32 @@ with tab1:
             st.session_state.verified_user = False
 
         if not st.session_state.verified_user:
-            # 3D Trigger Button
+            # Active fetch trigger
+            loc = get_geolocation()
+            
             trigger_checkin = st.button("PROCEED ENTERPRISE CHECK-IN ✔️")
 
-            if trigger_checkin:
-                with st.spinner("Establishing secure satellite uplink..."):
-                    loc = get_geolocation()
+            if loc and 'coords' in loc:
+                try:
+                    lat = loc['coords']['latitude']
+                    lon = loc['coords']['longitude']
                     
-                    if loc and 'coords' in loc:
-                        try:
-                            lat = loc['coords']['latitude']
-                            lon = loc['coords']['longitude']
-                            
-                            readable_address = get_text_address(lat, lon)
-                            maps_link = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
-                            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            
-                            # Arranged columns natively to prioritize Routing over Text Address
-                            new_data = pd.DataFrame([[timestamp, employee_name, maps_link, readable_address]], 
-                                                    columns=["Timestamp", "Employee Name", "Maps Routing", "Verified Address"])
-                            new_data.to_csv(DATA_FILE, mode='a', header=False, index=False)
-                            
-                            st.session_state.verified_user = True
-                            st.rerun()
-                        except Exception as e:
-                            st.error("Uplink Interrupted. Re-try execution.")
-                    else:
-                        st.info("ℹ️ Action Needed: Please click 'ALLOW' on your browser prompt to sync network authentication, then press the check-in button again.")
+                    readable_address = get_text_address(lat, lon)
+                    maps_link = f"https://www.google.com/maps?q={lat},{lon}"
+                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    
+                    # Logic to immediately verify and pipe data to registry
+                    new_data = pd.DataFrame([[timestamp, employee_name, maps_link, readable_address]], 
+                                            columns=["Timestamp", "Employee Name", "Maps Routing", "Verified Address"])
+                    new_data.to_csv(DATA_FILE, mode='a', header=False, index=False)
+                    
+                    st.session_state.verified_user = True
+                    st.rerun()
+                except Exception as e:
+                    pass
+            
+            if trigger_checkin and not loc:
+                st.info("🔄 Syncing device handshake... Please ensure your device location/GPS is turned ON and browser permission is click-allowed to finalize submission.")
 
         if st.session_state.verified_user:
             st.markdown(f"""
@@ -130,11 +120,10 @@ with tab1:
             """, unsafe_allow_html=True)
             st.balloons()
 
-# ================= TAB 2: MANAGEMENT CONTROL DASHBOARD =================
+# ================= MANAGEMENT CONTROL DASHBOARD =================
 with tab2:
     st.subheader("🔐 Management Authentication")
     
-    # Session state initialization for secure login toggle
     if "admin_logged_in" not in st.session_state:
         st.session_state.admin_logged_in = False
         
